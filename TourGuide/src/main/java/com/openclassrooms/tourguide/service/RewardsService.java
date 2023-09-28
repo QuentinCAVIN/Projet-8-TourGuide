@@ -1,6 +1,8 @@
 package com.openclassrooms.tourguide.service;
 
+import java.util.ConcurrentModificationException;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.springframework.stereotype.Service;
 
@@ -35,17 +37,28 @@ public class RewardsService {
 	public void setDefaultProximityBuffer() {
 		proximityBuffer = defaultProximityBuffer;
 	}
-	
+
+	//TODO: Methode modifiée
+	// Test de la methode générais une ConcurrentModificationException
 	public void calculateRewards(User user) {
-		List<VisitedLocation> userLocations = user.getVisitedLocations();
+		/*List<VisitedLocation> userLocations = user.getVisitedLocations();*/ // Ecrit comme ça a la base...
+		//... et remplacé par une CopyOnWriteArrayList
+		CopyOnWriteArrayList<VisitedLocation> userLocations = new CopyOnWriteArrayList<>();
+		user.getVisitedLocations().forEach(visitedLocation -> userLocations.add(visitedLocation));
+		// Cela résout le problème mais je me demande si ça ne crée pas des problèmes de performance (50 s pour réaliser le test)
+
 		List<Attraction> attractions = gpsUtil.getAttractions();
-		
+
+
 		for(VisitedLocation visitedLocation : userLocations) {
-			for(Attraction attraction : attractions) {
-				if(user.getUserRewards().stream().filter(r -> r.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
+			for(Attraction attraction : attractions ) {
+				if(user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
 					if(nearAttraction(visitedLocation, attraction)) {
 						user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
+						// Le problème Viens de getRewardPoints ci-dessus. Quand on le remplace par une valeur fixe, l'erreur est supprimée
 					}
+					// Je ne comprends pas pourquoi convertir userLocations en CopyOnWriteArrayList résout le problème, et que faire
+					// la même chose avec attractions ne le résout pas. Ce n'est pas un problème d'ordre des boucles
 				}
 			}
 		}
@@ -76,5 +89,4 @@ public class RewardsService {
         double statuteMiles = STATUTE_MILES_PER_NAUTICAL_MILE * nauticalMiles;
         return statuteMiles;
 	}
-
 }
