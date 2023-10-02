@@ -68,9 +68,14 @@ public class User {
 	public void clearVisitedLocations() {
 		visitedLocations.clear();
 	}
-	
+
+	//TODO: méthode modifié, comparais un String avec un Attraction + !. J'ai l'impression toutefois
+	// que cette méthode fait doublon avec la condition if de calculateReward.
+	// cette méthode est uniquement appelée à ce moment la. Attendre confirmation avant de supprimer
+	// EDIT : quand je la supprime une meme reward est ajouté 2 fois.... POURQUOI?!
 	public void addUserReward(UserReward userReward) {
-		if(userRewards.stream().filter(r -> !r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {
+		if(userRewards.stream().filter(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName)).count() == 0) {
+			/*if(userRewards.stream().filter(r -> !r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {*/
 			userRewards.add(userReward);
 		}
 	}
