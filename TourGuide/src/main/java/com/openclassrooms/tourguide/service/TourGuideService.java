@@ -7,14 +7,7 @@ import com.openclassrooms.tourguide.user.UserReward;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -95,16 +88,63 @@ public class TourGuideService {
 		return visitedLocation;
 	}
 
-	public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
-		List<Attraction> nearbyAttractions = new ArrayList<>();
-		for (Attraction attraction : gpsUtil.getAttractions()) {
-			if (rewardsService.isWithinAttractionProximity(attraction, visitedLocation.location)) {
-				nearbyAttractions.add(attraction);
-			}
-		}
+    // TODO Methode a effacer, sauf si l'utilisation d'une map dans le controller est plus adaptée
+    public Map<Double, Attraction> getNearByAttractions2(VisitedLocation visitedLocation) {
+        Map<Double, Attraction> distanceFromAttractions = new TreeMap<>();
+        Map<Double, Attraction> fiveClosestAttractions = new HashMap<>();
+        for (Attraction attraction : gpsUtil.getAttractions()) {
+            {
+                double distanceFromAttraction = rewardsService.getDistance(attraction, visitedLocation.location);
+                distanceFromAttractions.put(distanceFromAttraction, attraction);
+                //RewardService.getDistance va donner la distance qui sépare deux points en miles
+            }
 
-		return nearbyAttractions;
-	}
+        }
+
+        Iterator<Map.Entry<Double, Attraction>> iterator = distanceFromAttractions.entrySet().iterator();
+
+        for (int i = 0; i < 5 && iterator.hasNext(); i++) {
+            Map.Entry<Double, Attraction> entry = iterator.next();
+            fiveClosestAttractions.put(entry.getKey(), entry.getValue());
+        }
+        return fiveClosestAttractions;
+    }
+
+    public List<Attraction> getNearByAttractions(VisitedLocation visitedLocation) {
+        Map<Attraction, Double> attractionDistance = new HashMap<>();
+
+        for (Attraction attraction : gpsUtil.getAttractions()) {
+            {
+                double distanceFromAttraction = rewardsService.getDistance(attraction, visitedLocation.location);
+                attractionDistance.put(attraction, distanceFromAttraction);
+                //RewardService.getDistance va donner la distance qui sépare deux points en miles
+            }
+        }
+
+        ///////////////  Solution de tri trouvé sur stackOverFlow
+        Map<Attraction, Double> sortedAttractionDistance = attractionDistance.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue())
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey, // Crée une référence à la méthode getKey de chaque entrée du stream?
+                        Map.Entry::getValue,
+                        (oldValue, newValue) -> oldValue, LinkedHashMap::new));// ??????
+        //////////////
+
+        ////////////// Solution de moi, voir si ça fait bien la meme chose
+        Map<Attraction, Double> sortedAttractionDistance2 = new LinkedHashMap<>();
+                attractionDistance.entrySet().stream().sorted(Map.Entry.comparingByValue())
+                .forEach(entry -> sortedAttractionDistance2.put(entry.getKey(),entry.getValue()));
+        /////////////
+        //TODO : Les deux solutions on l'air de marcher, vérifier avec Vincent, effacer la moins intéressante
+
+
+        List<Attraction> ListAttractionsByDistance = sortedAttractionDistance.keySet().stream().limit(5).collect(Collectors.toList());
+        return ListAttractionsByDistance;
+
+		//TODO: Garder dans un coin de la tête qu'il pourrait être utile de modifier la sortie de la methode
+		// pour qu'elle renvoie une Map. La nouvelle fonctionalitée a implémenter dans le controller en serait facilitée
+    }
 
 	private void addShutDownHook() {
 		Runtime.getRuntime().addShutdownHook(new Thread() {
