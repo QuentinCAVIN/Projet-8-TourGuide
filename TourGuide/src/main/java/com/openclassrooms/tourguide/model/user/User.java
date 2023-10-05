@@ -1,4 +1,4 @@
-package com.openclassrooms.tourguide.user;
+package com.openclassrooms.tourguide.model.user;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -74,8 +74,8 @@ public class User {
 	// cette méthode est uniquement appelée à ce moment la. Attendre confirmation avant de supprimer
 	// EDIT : quand je la supprime une meme reward est ajouté 2 fois.... POURQUOI?!
 	public void addUserReward(UserReward userReward) {
-		if(userRewards.stream().filter(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName)).count() == 0) {
-			/*if(userRewards.stream().filter(r -> !r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {*/
+		if(userRewards.stream().noneMatch(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName))) {
+			/*if(userRewards.stream().filter(r -> r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {*/
 			userRewards.add(userReward);
 		}
 	}

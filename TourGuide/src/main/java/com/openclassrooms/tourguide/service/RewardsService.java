@@ -13,8 +13,8 @@ import gpsUtil.location.Attraction;
 import gpsUtil.location.Location;
 import gpsUtil.location.VisitedLocation;
 import rewardCentral.RewardCentral;
-import com.openclassrooms.tourguide.user.User;
-import com.openclassrooms.tourguide.user.UserReward;
+import com.openclassrooms.tourguide.model.user.User;
+import com.openclassrooms.tourguide.model.user.UserReward;
 
 @Service
 public class RewardsService {
@@ -42,8 +42,8 @@ public class RewardsService {
 
 	//TODO: Methode modifiée
 	// Le test de la methode générais une ConcurrentModificationException
-	public void calculateRewards1(User user) {
-		/*List<VisitedLocation> userLocations = user.getVisitedLocations();*/// Ecrit comme ça a la base...
+	public void calculateRewards(User user) {
+		/*List<VisitedLocation> userLocations = user.getVisitedLocations();*/ // Ecrit comme ça a la base...
 		//... et remplacé par une CopyOnWriteArrayList
 		CopyOnWriteArrayList<VisitedLocation> userLocations = new CopyOnWriteArrayList<>();
 		user.getVisitedLocations().forEach(visitedLocation -> userLocations.add(visitedLocation));
@@ -51,15 +51,13 @@ public class RewardsService {
 
 		List<Attraction> attractions = gpsUtil.getAttractions();
 
-		List<UserReward> rewards = user.getUserRewards(); // TODO a supprimer prochain RDV mentorat (04/10)
-
 		List<UserReward> rewardsToAdd = new ArrayList<>();
 
 		for(VisitedLocation visitedLocation : userLocations) { // Echanger l'ordre des boucles ne serait pas plus approprié?
             // On parcourt toutes les endroits visités par l'utilisateur uniquement quand la condition if est valide
             // if valid = quand le nom de l'attraction ne correspond à aucune des attractions visitées par l'utilisateur
 			for(Attraction attraction : attractions ) {
-				if(rewards.stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
+				if(user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
 					if(nearAttraction(visitedLocation, attraction)) {
 						rewardsToAdd.add(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
 						// Le problème Viens de getRewardPoints ci-dessus. Quand on le remplace par une valeur fixe, l'erreur est supprimée
@@ -72,7 +70,7 @@ public class RewardsService {
 		rewardsToAdd.forEach(reward -> user.addUserReward(reward));
 	}
 
-	public void calculateRewards(User user) { // TODO: Methode réécrite, choisir la plus claire
+	public void calculateRewards1(User user) { // TODO: Methode en double, virer celle la
 
 		List<VisitedLocation> userLocations = user.getVisitedLocations();
 		List<Attraction> attractions = gpsUtil.getAttractions();
@@ -104,7 +102,7 @@ public class RewardsService {
 		return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
 	}
 
-	private int getRewardPoints(Attraction attraction, User user) {
+	public int getRewardPoints(Attraction attraction, User user) {
 		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
 	}
 

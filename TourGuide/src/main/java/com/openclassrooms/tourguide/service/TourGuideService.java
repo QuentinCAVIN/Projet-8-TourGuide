@@ -1,9 +1,10 @@
 package com.openclassrooms.tourguide.service;
 
 import com.openclassrooms.tourguide.helper.InternalTestHelper;
+import com.openclassrooms.tourguide.model.attraction.AttractionInfo;
 import com.openclassrooms.tourguide.tracker.Tracker;
-import com.openclassrooms.tourguide.user.User;
-import com.openclassrooms.tourguide.user.UserReward;
+import com.openclassrooms.tourguide.model.user.User;
+import com.openclassrooms.tourguide.model.user.UserReward;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -152,6 +153,18 @@ public class TourGuideService {
 				tracker.stopTracking();
 			}
 		});
+	}
+
+	// TODO: Methode ajouté et non testée. Ajouter un test?
+	public AttractionInfo attractionInfoBuilder (Attraction attraction, User user){
+
+		String attractionName = attraction.attractionName;
+		Location attractionLocation = new Location(attraction.latitude,attraction.longitude);
+		Location userLocation = getUserLocation(user).location;
+		double distanceInMiles = rewardsService.getDistance(attractionLocation, userLocation);
+		int rewardPoint = rewardsService.getRewardPoints(attraction,user);
+
+		return new AttractionInfo(attractionName,attractionLocation,distanceInMiles,rewardPoint);
 	}
 
 	/**********************************************************************************
