@@ -32,7 +32,9 @@ public class TestRewardsService {
 		User user = new User(UUID.randomUUID(), "jon", "000", "jon@tourGuide.com");
 		Attraction attraction = gpsUtil.getAttractions().get(0);
 		user.addToVisitedLocations(new VisitedLocation(user.getUserId(), attraction, new Date()));
-		tourGuideService.trackUserLocation(user);
+		tourGuideService.trackUserLocation(user).join(); // .join ajouté pour attendre l'exécution du Thread
+		// avant d'effectuer les vérifications.
+
 		List<UserReward> userRewards = user.getUserRewards();
 		tourGuideService.tracker.stopTracking();
 		assertTrue(userRewards.size() == 1);
@@ -46,6 +48,7 @@ public class TestRewardsService {
 		assertTrue(rewardsService.isWithinAttractionProximity(attraction, attraction));
 	}
 
+	// TODO: trouver pourquoi la methode est aussi lente
 	 // Needs fixed - can throw ConcurrentModificationException
 	@Test
 	public void nearAllAttractions() {
