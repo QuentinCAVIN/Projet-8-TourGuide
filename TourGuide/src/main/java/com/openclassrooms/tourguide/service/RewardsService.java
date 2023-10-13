@@ -1,10 +1,12 @@
 package com.openclassrooms.tourguide.service;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.springframework.stereotype.Service;
 
@@ -26,10 +28,15 @@ public class RewardsService {
 	private int attractionProximityRange = 200;
 	private final GpsUtil gpsUtil;
 	private final RewardCentral rewardsCentral;
+	ExecutorService executorService = Executors.newFixedThreadPool(500);
 
 	public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
 		this.gpsUtil = gpsUtil;
 		this.rewardsCentral = rewardCentral;
+	}
+
+	public ExecutorService getExecutorService () {
+		return this.executorService;
 	}
 
 	public void setProximityBuffer(int proximityBuffer) {
@@ -40,37 +47,44 @@ public class RewardsService {
 		proximityBuffer = defaultProximityBuffer;
 	}
 
-	//TODO: Methode modifiée
-	// Le test de la methode générais une ConcurrentModificationException
 	public void calculateRewards(User user) {
-		/*List<VisitedLocation> userLocations = user.getVisitedLocations();*/ // Ecrit comme ça a la base...
-		//... et remplacé par une CopyOnWriteArrayList
+		/*List<VisitedLocation> userLocations = user.getVisitedLocations();*/// Ecrit comme ça a la base...
+		//... et remplacé par une CopyOnWriteArrayList pour gérer une ConcurrentModificationException
 		CopyOnWriteArrayList<VisitedLocation> userLocations = new CopyOnWriteArrayList<>();
 		user.getVisitedLocations().forEach(visitedLocation -> userLocations.add(visitedLocation));
-		// Cela résout le problème mais je me demande si ça ne crée pas des problèmes de performance (50 s pour réaliser le test)
 
-		List<Attraction> attractions = gpsUtil.getAttractions();
+		CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executorService)
+				.thenAccept(( attractions -> {
 
-		List<UserReward> rewardsToAdd = new ArrayList<>();
-
-		for(VisitedLocation visitedLocation : userLocations) { // Echanger l'ordre des boucles ne serait pas plus approprié?
-            // On parcourt toutes les endroits visités par l'utilisateur uniquement quand la condition if est valide
-            // if valid = quand le nom de l'attraction ne correspond à aucune des attractions visitées par l'utilisateur
-			for(Attraction attraction : attractions ) {
-				if(user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
-					if(nearAttraction(visitedLocation, attraction)) {
-						rewardsToAdd.add(new UserReward(visitedLocation, attraction, getRewardPoints(attraction, user)));
-						// Le problème Viens de getRewardPoints ci-dessus. Quand on le remplace par une valeur fixe, l'erreur est supprimée
+			for(VisitedLocation visitedLocation : userLocations) {
+				for(Attraction attraction : attractions ) {
+					// if valid = quand le nom de l'attraction ne correspond à aucune des attractions visitées par l'utilisateur
+					if(user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
+						if(nearAttraction(visitedLocation, attraction)) {
+							/*addUserRewardAsync(user, visitedLocation,attraction);*/
+							// Impossible d'utiliser la methode addUserRewardAsync, je n'arrive pas
+							// a arréter les threads de cette methode dans les tests = test faux.
+							user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction,user)));
+						}
+						// Je ne comprends pas pourquoi convertir userLocations (et pas attractions) en CopyOnWriteArrayList résout le problème, et que faire
+						// la même chose avec attractions ne le résout pas. Ce n'est pas un problème d'ordre des boucles
 					}
-					// Je ne comprends pas pourquoi convertir userLocations (et pas attractions) en CopyOnWriteArrayList résout le problème, et que faire
-					// la même chose avec attractions ne le résout pas. Ce n'est pas un problème d'ordre des boucles
 				}
 			}
-		}
-		rewardsToAdd.forEach(reward -> user.addUserReward(reward));
+		}));
 	}
 
-	public void calculateRewards1(User user) { // TODO: Methode en double, virer celle la
+	//TODO j'aimerais utiliser cette methode dans calculateRewards mais ça rend le test impossible a vérifier
+	// Je pense que ça fonctionne quand même
+	public void addUserRewardAsync (User user, VisitedLocation visitedLocation, Attraction attraction) {
+		CompletableFuture.supplyAsync( () -> getRewardPoints(attraction, user),executorService).thenAccept( (integer) -> {
+			user.addUserReward(new UserReward(visitedLocation, attraction, integer));
+		} );
+	}
+
+	//TODO: Methode en double de calculateReward, a supprimer avant la soutenance
+	// cette methode résout le probléme de ConcurrentModificationException dans passer par la CopyOnWriteArrayList
+	public void calculateRewards2(User user) {
 
 		List<VisitedLocation> userLocations = user.getVisitedLocations();
 		List<Attraction> attractions = gpsUtil.getAttractions();

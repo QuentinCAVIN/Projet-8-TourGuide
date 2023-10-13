@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
 
 import org.junit.jupiter.api.Test;
 
@@ -35,6 +36,11 @@ public class TestRewardsService {
 		tourGuideService.trackUserLocation(user).join(); // .join ajouté pour attendre l'exécution du Thread
 		// avant d'effectuer les vérifications.
 
+
+		ExecutorService executorService = rewardsService.getExecutorService();
+		executorService.shutdown();
+		while (!executorService.isTerminated()){}
+
 		List<UserReward> userRewards = user.getUserRewards();
 		tourGuideService.tracker.stopTracking();
 		assertTrue(userRewards.size() == 1);
@@ -62,6 +68,10 @@ public class TestRewardsService {
 		rewardsService.calculateRewards(tourGuideService.getAllUsers().get(0));
 		List<UserReward> userRewards = tourGuideService.getUserRewards(tourGuideService.getAllUsers().get(0));
 		tourGuideService.tracker.stopTracking();
+
+		ExecutorService executorService = rewardsService.getExecutorService();
+		executorService.shutdown();
+		while (!executorService.isTerminated()){}
 
 		assertEquals(gpsUtil.getAttractions().size(), userRewards.size());
 	}
