@@ -1,5 +1,6 @@
 package com.openclassrooms.tourguide.service;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,115 +23,113 @@ import com.openclassrooms.tourguide.model.user.UserReward;
 public class RewardsService {
     private static final double STATUTE_MILES_PER_NAUTICAL_MILE = 1.15077945;
 
-	// proximity in miles
+    // proximity in miles
     private int defaultProximityBuffer = 10;
-	private int proximityBuffer = defaultProximityBuffer;
-	private int attractionProximityRange = 200;
-	private final GpsUtil gpsUtil;
-	private final RewardCentral rewardsCentral;
-	ExecutorService executorService = Executors.newFixedThreadPool(500);
+    private int proximityBuffer = defaultProximityBuffer;
+    private int attractionProximityRange = 200;
+    private final GpsUtil gpsUtil;
+    private final RewardCentral rewardsCentral;
+    ExecutorService executorService = Executors.newFixedThreadPool(500);
 
-	public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
-		this.gpsUtil = gpsUtil;
-		this.rewardsCentral = rewardCentral;
-	}
+    public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
+        this.gpsUtil = gpsUtil;
+        this.rewardsCentral = rewardCentral;
+    }
 
-	public ExecutorService getExecutorService () {
-		return this.executorService;
-	}
+    public ExecutorService getExecutorService() {
+        return this.executorService;
+    }
 
-	public void setProximityBuffer(int proximityBuffer) {
-		this.proximityBuffer = proximityBuffer;
-	}
+    public void setProximityBuffer(int proximityBuffer) {
+        this.proximityBuffer = proximityBuffer;
+    }
 
-	public void setDefaultProximityBuffer() {
-		proximityBuffer = defaultProximityBuffer;
-	}
+    public void setDefaultProximityBuffer() {
+        proximityBuffer = defaultProximityBuffer;
+    }
 
-	public void calculateRewards(User user) {
-		/*List<VisitedLocation> userLocations = user.getVisitedLocations();*/// Ecrit comme ça a la base...
-		//... et remplacé par une CopyOnWriteArrayList pour gérer une ConcurrentModificationException
-		CopyOnWriteArrayList<VisitedLocation> userLocations = new CopyOnWriteArrayList<>();
-		user.getVisitedLocations().forEach(visitedLocation -> userLocations.add(visitedLocation));
+    public CompletableFuture<Void> calculateRewards(User user) {
+        //List<VisitedLocation> userLocations = user.getVisitedLocations();/// Ecrit comme ça a la base...
+        //... et remplacé par une CopyOnWriteArrayList pour gérer une ConcurrentModificationException
+      CopyOnWriteArrayList<VisitedLocation> userLocations = new CopyOnWriteArrayList<>();
+        user.getVisitedLocations().forEach(visitedLocation -> userLocations.add(visitedLocation));
 
-		CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executorService)
-				.thenAccept(( attractions -> {
+        return CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executorService)
+                .thenCompose((attractions -> { // thenCompose permet de chainer des completableFuture entre eux
 
-			for(VisitedLocation visitedLocation : userLocations) {
-				for(Attraction attraction : attractions ) {
-					// if valid = quand le nom de l'attraction ne correspond à aucune des attractions visitées par l'utilisateur
-					if(user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
-						if(nearAttraction(visitedLocation, attraction)) {
-							/*addUserRewardAsync(user, visitedLocation,attraction);*/
-							// Impossible d'utiliser la methode addUserRewardAsync, je n'arrive pas
-							// a arréter les threads de cette methode dans les tests = test faux.
-							user.addUserReward(new UserReward(visitedLocation, attraction, getRewardPoints(attraction,user)));
-						}
-						// Je ne comprends pas pourquoi convertir userLocations (et pas attractions) en CopyOnWriteArrayList résout le problème, et que faire
-						// la même chose avec attractions ne le résout pas. Ce n'est pas un problème d'ordre des boucles
-					}
-				}
-			}
-		}));
-	}
 
-	//TODO j'aimerais utiliser cette methode dans calculateRewards mais ça rend le test impossible a vérifier
-	// Je pense que ça fonctionne quand même
-	public void addUserRewardAsync (User user, VisitedLocation visitedLocation, Attraction attraction) {
-		CompletableFuture.supplyAsync( () -> getRewardPoints(attraction, user),executorService).thenAccept( (integer) -> {
-			user.addUserReward(new UserReward(visitedLocation, attraction, integer));
-		} );
-	}
+                    List<CompletableFuture<Void>> futures = new ArrayList<>();
+                    for (VisitedLocation visitedLocation : userLocations) {
+                        for (Attraction attraction : attractions) {
+                            // if valid = quand le nom de l'attraction ne correspond à aucune des attractions visitées par l'utilisateur
+                            if (user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
+                                if (nearAttraction(visitedLocation, attraction)) {
+                                    futures.add(addUserRewardAsync(user, visitedLocation, attraction));
+                                    //Un CompletableFuture<Void> ajouté dans la liste "future" à chaque boucle
+                                }
+                            }
+                        }
+                    }
+                    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+                    //On retourne un CompletableFuture composé de tout les CompletableFuture mis dans la liste "futures"
+                }));
+    }
 
-	//TODO: Methode en double de calculateReward, a supprimer avant la soutenance
-	// cette methode résout le probléme de ConcurrentModificationException dans passer par la CopyOnWriteArrayList
-	public void calculateRewards2(User user) {
+    public CompletableFuture<Void> addUserRewardAsync(User user, VisitedLocation visitedLocation, Attraction attraction) {
+        return CompletableFuture.supplyAsync(() -> getRewardPoints(attraction, user), executorService).thenAccept((integer) -> {
+            user.addUserReward(new UserReward(visitedLocation, attraction, integer));
+        });
+    }
 
-		List<VisitedLocation> userLocations = user.getVisitedLocations();
-		List<Attraction> attractions = gpsUtil.getAttractions();
-		List<UserReward> rewards = user.getUserRewards();
+    //TODO: Methode en double de calculateReward, a supprimer avant la soutenance
+    // cette methode résout le probléme de ConcurrentModificationException dans passer par la CopyOnWriteArrayList
+    public void calculateRewards2(User user) {
 
-		Map<Attraction,VisitedLocation> nearbyAttractions = new HashMap<>();
-		for (VisitedLocation visitedLocation : userLocations){
-			for (Attraction attraction: attractions){
-				if (nearAttraction(visitedLocation, attraction)){
-					nearbyAttractions.put(attraction, visitedLocation);
+        List<VisitedLocation> userLocations = user.getVisitedLocations();
+        List<Attraction> attractions = gpsUtil.getAttractions();
+        List<UserReward> rewards = user.getUserRewards();
 
-				}
-			}
-		}
+        Map<Attraction, VisitedLocation> nearbyAttractions = new HashMap<>();
+        for (VisitedLocation visitedLocation : userLocations) {
+            for (Attraction attraction : attractions) {
+                if (nearAttraction(visitedLocation, attraction)) {
+                    nearbyAttractions.put(attraction, visitedLocation);
 
-		for (Map.Entry<Attraction,VisitedLocation> attraction : nearbyAttractions.entrySet()) {
-			if(rewards.stream().filter(reward -> reward.attraction.attractionName.equals(attraction.getKey().attractionName)).count() == 0){
-				user.addUserReward(new UserReward(attraction.getValue(), attraction.getKey(), getRewardPoints(attraction.getKey(), user)));
-			}
-			// Un utilisateur obtient une réduction quand il est proche d'une attraction pour laquelle il n'a pas déja de réduction
-		}
-	}
+                }
+            }
+        }
 
-	public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
-		return getDistance(attraction, location) > attractionProximityRange ? false : true;
-	}
+        for (Map.Entry<Attraction, VisitedLocation> attraction : nearbyAttractions.entrySet()) {
+            if (rewards.stream().filter(reward -> reward.attraction.attractionName.equals(attraction.getKey().attractionName)).count() == 0) {
+                user.addUserReward(new UserReward(attraction.getValue(), attraction.getKey(), getRewardPoints(attraction.getKey(), user)));
+            }
+            // Un utilisateur obtient une réduction quand il est proche d'une attraction pour laquelle il n'a pas déja de réduction
+        }
+    }
 
-	private boolean nearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
-		return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
-	}
+    public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
+        return getDistance(attraction, location) > attractionProximityRange ? false : true;
+    }
 
-	public int getRewardPoints(Attraction attraction, User user) {
-		return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
-	}
+    private boolean nearAttraction(VisitedLocation visitedLocation, Attraction attraction) {
+        return getDistance(attraction, visitedLocation.location) > proximityBuffer ? false : true;
+    }
 
-	public double getDistance(Location loc1, Location loc2) {
+    public int getRewardPoints(Attraction attraction, User user) {
+        return rewardsCentral.getAttractionRewardPoints(attraction.attractionId, user.getUserId());
+    }
+
+    public double getDistance(Location loc1, Location loc2) {
         double lat1 = Math.toRadians(loc1.latitude);
         double lon1 = Math.toRadians(loc1.longitude);
         double lat2 = Math.toRadians(loc2.latitude);
         double lon2 = Math.toRadians(loc2.longitude);
 
         double angle = Math.acos(Math.sin(lat1) * Math.sin(lat2)
-                               + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
+                + Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon1 - lon2));
 
         double nauticalMiles = 60 * Math.toDegrees(angle);
         double statuteMiles = STATUTE_MILES_PER_NAUTICAL_MILE * nauticalMiles;
         return statuteMiles;
-	}
+    }
 }

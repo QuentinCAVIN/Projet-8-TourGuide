@@ -61,6 +61,8 @@ public class TourGuideService {
 	//TODO: A VOIR AVEC VINCENT
 	//l'utilisation d'un CompletableFuture dans trackUserLocation à simplement déplacé le délai d'exécution ici,
 	//même si c'est atténué par l'utilisation d'un opérateur ternaire.
+	//Pour ne pas souffrir de ce probléme il faudrais retourner tout en haut
+	// (dans le controller donc) Un completableFuture<VisitedLocation>. A priori Spring permet ça
 	public VisitedLocation getUserLocation(User user) {
 		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
 				: trackUserLocation(user).join();
@@ -109,7 +111,10 @@ public class TourGuideService {
 						gpsUtil.getUserLocation(user.getUserId()), executorService)
 				.thenApply(visitedLocation -> {
 					user.addToVisitedLocations(visitedLocation);
-					rewardsService.calculateRewards(user);
+					rewardsService.calculateRewards(user).join(); //TODO: Mettre un Join ici ça suffit?
+					// Problème dans les tests sinon. Une solution avec un .thenCompose serait elle plus appropriée?
+					// Ici chaque thread va attendre le résultat du thread de calculateReward avant de renvoyer La visitedLocation.
+					// Quel pourrait être le problème sans le .join, à part dans les tests?
 					return visitedLocation;
 				} );
 	}

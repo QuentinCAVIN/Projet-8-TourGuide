@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import gpsUtil.location.VisitedLocation;
 import tripPricer.Provider;
@@ -73,12 +74,18 @@ public class User {
 	// que cette méthode fait doublon avec la condition if de calculateReward.
 	// cette méthode est uniquement appelée à ce moment la. Attendre confirmation avant de supprimer
 	// EDIT : quand je la supprime une meme reward est ajouté 2 fois.... POURQUOI?!
+	// EDIT de l'EDIT: maitenant que j'ai modifié mes methode en ajoutant des CompletableFuture, une meme reward
+	// n'est plus ajouté 2 fois.
 	public void addUserReward(UserReward userReward) {
-		if(userRewards.stream().noneMatch(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName))) {
-			/*if(userRewards.stream().filter(r -> r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {*/
+		//TODO pour moi la condition if fait toujours doublon avec la condition if de la methode ou elle est utilisé
+		// elle n'est n'est plus utile ici. A confirmer avec Vincent
+		// Créé une CurrentModificationException. Pour résoudre le probléme soit je vire la condition, soit je modifie
+		// l'attribut UserRewards de list vers CopyOnWriteArrayList
+		//if (userRewards.stream().noneMatch(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName))) {
+			//if(userRewards.stream().filter(r -> r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {
 			userRewards.add(userReward);
 		}
-	}
+	//}
 	
 	public List<UserReward> getUserRewards() {
 		return userRewards;
