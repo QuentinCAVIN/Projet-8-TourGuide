@@ -58,10 +58,10 @@ public class TourGuideService {
 	}
 
 
-	//TODO: A VOIR AVEC VINCENT
+
 	//l'utilisation d'un CompletableFuture dans trackUserLocation à simplement déplacé le délai d'exécution ici,
 	//même si c'est atténué par l'utilisation d'un opérateur ternaire.
-	//Pour ne pas souffrir de ce probléme il faudrais retourner tout en haut
+	//Pour ne pas souffrir de ce probléme il faudrait retourner tout en haut
 	// (dans le controller donc) Un completableFuture<VisitedLocation>. A priori Spring permet ça
 	public VisitedLocation getUserLocation(User user) {
 		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()

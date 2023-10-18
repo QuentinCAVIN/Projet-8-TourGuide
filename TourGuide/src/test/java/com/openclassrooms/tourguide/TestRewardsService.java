@@ -37,9 +37,9 @@ public class TestRewardsService {
 		// avant d'effectuer les vérifications.
 
 
-		ExecutorService executorService = rewardsService.getExecutorService();
+		/*ExecutorService executorService = rewardsService.getExecutorService();
 		executorService.shutdown();
-		while (!executorService.isTerminated()){}
+		while (!executorService.isTerminated()){}*/
 
 		List<UserReward> userRewards = user.getUserRewards();
 		tourGuideService.tracker.stopTracking();
@@ -54,8 +54,6 @@ public class TestRewardsService {
 		assertTrue(rewardsService.isWithinAttractionProximity(attraction, attraction));
 	}
 
-	// TODO: trouver pourquoi la methode est aussi lente
-	 // Needs fixed - can throw ConcurrentModificationException
 	@Test
 	public void nearAllAttractions() {
 		GpsUtil gpsUtil = new GpsUtil();
@@ -71,5 +69,4 @@ public class TestRewardsService {
 
 		assertEquals(gpsUtil.getAttractions().size(), userRewards.size());*/
 	}
-
 }

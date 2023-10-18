@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -29,15 +28,13 @@ public class RewardsService {
     private int attractionProximityRange = 200;
     private final GpsUtil gpsUtil;
     private final RewardCentral rewardsCentral;
-    ExecutorService executorService = Executors.newFixedThreadPool(500);
+    private final List<Attraction> attractions;
+    ExecutorService executorService = Executors.newFixedThreadPool(1000);
 
     public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
         this.gpsUtil = gpsUtil;
         this.rewardsCentral = rewardCentral;
-    }
-
-    public ExecutorService getExecutorService() {
-        return this.executorService;
+        this.attractions = gpsUtil.getAttractions();
     }
 
     public void setProximityBuffer(int proximityBuffer) {
@@ -56,25 +53,24 @@ public class RewardsService {
         //Edit: Plus besoin de ça j'ai modifié directement l'attribut
         // List<VisitedLacation> de la classe User en CopyOnWriteArrayList
 
-        return CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executorService)
-                .thenCompose((attractions -> { // thenCompose permet de chainer des completableFuture entre eux
+        /* return CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executorService)
+                .thenCompose((attractions -> {*/ // thenCompose permet de chainer des completableFuture entre eux
+        // Edit: methode supprimé, inutile car gpsUtil.getAttraction est maintenant appelé une seule fois dans le constructeur
 
-
-                    List<CompletableFuture<Void>> futures = new ArrayList<>();
-                    for (VisitedLocation visitedLocation : userLocations) {
-                        for (Attraction attraction : attractions) {
-                            // if valid = quand le nom de l'attraction ne correspond à aucune des attractions visitées par l'utilisateur
-                            if (user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
-                                if (nearAttraction(visitedLocation, attraction)) {
-                                    futures.add(addUserRewardAsync(user, visitedLocation, attraction));
-                                    //Un CompletableFuture<Void> ajouté dans la liste "future" à chaque boucle
-                                }
-                            }
-                        }
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        for (VisitedLocation visitedLocation : userLocations) {
+            for (Attraction attraction : attractions) {
+                // if valid = quand le nom de l'attraction ne correspond à aucune des attractions visitées par l'utilisateur
+                if (user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
+                    if (nearAttraction(visitedLocation, attraction)) {
+                        futures.add(addUserRewardAsync(user, visitedLocation, attraction));
+                        //Un CompletableFuture<Void> ajouté dans la liste "future" à chaque boucle
                     }
-                    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
-                    //On retourne un CompletableFuture composé de tout les CompletableFuture mis dans la liste "futures"
-                }));
+                }
+            }
+        }
+        return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
+        //On retourne un CompletableFuture composé de tout les CompletableFuture mis dans la liste "futures" (allOf)
     }
 
     public CompletableFuture<Void> addUserRewardAsync(User user, VisitedLocation visitedLocation, Attraction attraction) {
