@@ -49,10 +49,12 @@ public class RewardsService {
     }
 
     public CompletableFuture<Void> calculateRewards(User user) {
-        //List<VisitedLocation> userLocations = user.getVisitedLocations();/// Ecrit comme ça a la base...
+        List<VisitedLocation> userLocations = user.getVisitedLocations();/// Ecrit comme ça a la base...
         //... et remplacé par une CopyOnWriteArrayList pour gérer une ConcurrentModificationException
-      CopyOnWriteArrayList<VisitedLocation> userLocations = new CopyOnWriteArrayList<>();
-        user.getVisitedLocations().forEach(visitedLocation -> userLocations.add(visitedLocation));
+     /* CopyOnWriteArrayList<VisitedLocation> userLocations = new CopyOnWriteArrayList<>();
+        user.getVisitedLocations().forEach(visitedLocation -> userLocations.add(visitedLocation));*/
+        //Edit: Plus besoin de ça j'ai modifié directement l'attribut
+        // List<VisitedLacation> de la classe User en CopyOnWriteArrayList
 
         return CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executorService)
                 .thenCompose((attractions -> { // thenCompose permet de chainer des completableFuture entre eux
