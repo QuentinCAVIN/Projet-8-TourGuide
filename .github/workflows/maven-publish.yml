@@ -28,7 +28,7 @@ jobs:
       - name: RewardCentral
         run: mvn install:install-file -Dfile=TourGuide/libs/RewardCentral.jar -DgroupId=rewardCentral -DartifactId=rewardCentral -Dversion=1.0.0 -Dpackaging=jar
 
-      - name: tripPricer
+      - name: TripPricer
         run: mvn install:install-file -Dfile=TourGuide/libs/TripPricer.jar -DgroupId=tripPricer -DartifactId=tripPricer -Dversion=1.0.0 -Dpackaging=jar
 
       - name: Build
@@ -36,7 +36,7 @@ jobs:
         
 
       - name: Test
-        run: mvn test
+        run: mvn test --file TourGuide/pom.xml
 
   package:
     runs-on: ubuntu-latest
@@ -52,4 +52,4 @@ jobs:
           distribution: 'temurin'
 
       - name: Package
-        run: mvn package --file pom.xml
+        run: mvn package --file TourGuide/pom.xml
