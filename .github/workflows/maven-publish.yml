@@ -23,7 +23,7 @@ jobs:
           distribution: 'temurin'
 
       - name: gpsUtil
-        run: mvn install:install-file -Dfile=Projet-8-TourGuide/libs/gpsUtil.jar/libs/gpsUtil.jar -DgroupId=gpsUtil -DartifactId=gpsUtil -Dversion=1.0.0 -Dpackaging=jar
+        run: mvn install:install-file -Dfile=/home/runner/worklibs/gpsUtil.jar/libs/gpsUtil.jar -DgroupId=gpsUtil -DartifactId=gpsUtil -Dversion=1.0.0 -Dpackaging=jar
 
       - name: RewardCentral
         run: mvn install:install-file -Dfile=./libs/RewardCentral.jar -DgroupId=rewardCentral -DartifactId=rewardCentral -Dversion=1.0.0 -Dpackaging=jar
