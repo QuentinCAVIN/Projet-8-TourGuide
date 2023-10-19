@@ -23,7 +23,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build
-        run: mvn clean compile
+        run: mvn clean compile --file TourGuide/pom.xml
 
       - name: Test
         run: mvn test
