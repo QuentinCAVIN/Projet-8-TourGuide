@@ -23,7 +23,7 @@ jobs:
           distribution: 'temurin'
 
       - name: install
-        run: mvn install
+        run: mvn install --file TourGuide/pom.xml
 
       - name: Build
         run: mvn clean compile --file TourGuide/pom.xml
