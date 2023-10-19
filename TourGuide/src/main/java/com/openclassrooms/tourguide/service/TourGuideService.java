@@ -9,6 +9,9 @@ import com.openclassrooms.tourguide.model.user.UserReward;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -32,6 +35,7 @@ public class TourGuideService {
 	private final TripPricer tripPricer = new TripPricer();
 	public final Tracker tracker;
 	boolean testMode = true;
+	ExecutorService executorService = Executors.newFixedThreadPool(500);
 
 	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
 		this.gpsUtil = gpsUtil;
@@ -53,9 +57,15 @@ public class TourGuideService {
 		return user.getUserRewards();
 	}
 
+
+
+	//l'utilisation d'un CompletableFuture dans trackUserLocation à simplement déplacé le délai d'exécution ici,
+	//même si c'est atténué par l'utilisation d'un opérateur ternaire.
+	//Pour ne pas souffrir de ce probléme il faudrait retourner tout en haut
+	// (dans le controller donc) Un completableFuture<VisitedLocation>. A priori Spring permet ça
 	public VisitedLocation getUserLocation(User user) {
 		VisitedLocation visitedLocation = (user.getVisitedLocations().size() > 0) ? user.getLastVisitedLocation()
-				: trackUserLocation(user);
+				: trackUserLocation(user).join();
 		return visitedLocation;
 	}
 
@@ -82,11 +92,31 @@ public class TourGuideService {
 		return providers;
 	}
 
-	public VisitedLocation trackUserLocation(User user) {
-		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());
+
+	//TODO: methode utile pour me rappeler de mon cheminement, à effacer pour la soutenance.
+	public VisitedLocation trackUserLocationOrigin(User user) {
+		// Ici les deux lignes qui créent des ralentissements ne peuvent pas être lancés de manière asynchrone :
+		// calculateReward(user) doit attendre que visitedLocation soit ajouté à user avant d'être lancé.
+		VisitedLocation visitedLocation = gpsUtil.getUserLocation(user.getUserId());// Lent
 		user.addToVisitedLocations(visitedLocation);
-		rewardsService.calculateRewards(user);
+		rewardsService.calculateRewards(user);//Lent
 		return visitedLocation;
+	}
+
+	//Methode précédente encapsulée dans un CompletableFuture, lancé de manière asynchrone
+	// grâce aux threads d'executorService (attribut de la Classe).
+	// Cette solution oblige à modifier les méthodes qui font appelle à trackUserLocation qui renvoie CompletableFuture
+	public CompletableFuture<VisitedLocation> trackUserLocation(User user) {
+		return CompletableFuture.supplyAsync(() ->
+						gpsUtil.getUserLocation(user.getUserId()), executorService)
+				.thenApply(visitedLocation -> {
+					user.addToVisitedLocations(visitedLocation);
+					rewardsService.calculateRewards(user).join(); //TODO: Mettre un Join ici ça suffit?
+					// Problème dans les tests sinon. Une solution avec un .thenCompose serait elle plus appropriée?
+					// Ici chaque thread va attendre le résultat du thread de calculateReward avant de renvoyer La visitedLocation.
+					// Quel pourrait être le problème sans le .join, à part dans les tests?
+					return visitedLocation;
+				} );
 	}
 
     // TODO Methode a effacer, sauf si l'utilisation d'une map dans le controller est plus adaptée
@@ -101,7 +131,6 @@ public class TourGuideService {
             }
 
         }
-
         Iterator<Map.Entry<Double, Attraction>> iterator = distanceFromAttractions.entrySet().iterator();
 
         for (int i = 0; i < 5 && iterator.hasNext(); i++) {
