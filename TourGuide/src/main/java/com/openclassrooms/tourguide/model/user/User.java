@@ -77,15 +77,11 @@ public class User {
 	// EDIT de l'EDIT: maitenant que j'ai modifié mes methode en ajoutant des CompletableFuture, une meme reward
 	// n'est plus ajouté 2 fois.
 	public void addUserReward(UserReward userReward) {
-		//TODO pour moi la condition if fait toujours doublon avec la condition if de la methode ou elle est utilisé
-		// elle n'est n'est plus utile ici. A confirmer avec Vincent
-		// Créé une CurrentModificationException. Pour résoudre le probléme soit je vire la condition, soit je modifie
-		// l'attribut UserRewards de list vers CopyOnWriteArrayList
-		//if (userRewards.stream().noneMatch(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName))) {
-			//if(userRewards.stream().filter(r -> r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {
+
+		if (userRewards.stream().noneMatch(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName))) {
 			userRewards.add(userReward);
 		}
-	//}
+	}
 	
 	public List<UserReward> getUserRewards() {
 		return userRewards;

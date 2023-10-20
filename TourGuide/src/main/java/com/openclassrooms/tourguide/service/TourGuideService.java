@@ -34,12 +34,14 @@ public class TourGuideService {
 	private final RewardsService rewardsService;
 	private final TripPricer tripPricer = new TripPricer();
 	public final Tracker tracker;
+	private final List<Attraction> attractions;
 	boolean testMode = true;
 	ExecutorService executorService = Executors.newFixedThreadPool(500);
 
 	public TourGuideService(GpsUtil gpsUtil, RewardsService rewardsService) {
 		this.gpsUtil = gpsUtil;
 		this.rewardsService = rewardsService;
+		this.attractions = gpsUtil.getAttractions();
 		
 		Locale.setDefault(Locale.US);
 
@@ -123,7 +125,7 @@ public class TourGuideService {
     public Map<Double, Attraction> getNearByAttractions2(VisitedLocation visitedLocation) {
         Map<Double, Attraction> distanceFromAttractions = new TreeMap<>();
         Map<Double, Attraction> fiveClosestAttractions = new HashMap<>();
-        for (Attraction attraction : gpsUtil.getAttractions()) {
+        for (Attraction attraction : attractions) {
             {
                 double distanceFromAttraction = rewardsService.getDistance(attraction, visitedLocation.location);
                 distanceFromAttractions.put(distanceFromAttraction, attraction);
