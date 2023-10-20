@@ -72,11 +72,10 @@ public class User {
     }
 
     public void addUserReward(UserReward userReward) {
-        //if (userRewards.stream().noneMatch(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName))) {
-        //if(userRewards.stream().filter(r -> r.attraction.attractionName.equals(userReward.attraction)).count() == 0) {
-        userRewards.add(userReward);
+        if (userRewards.stream().noneMatch(reward -> reward.attraction.attractionName.equals(userReward.attraction.attractionName))) {
+            userRewards.add(userReward);
+        }
     }
-
 
     public List<UserReward> getUserRewards() {
         return userRewards;
