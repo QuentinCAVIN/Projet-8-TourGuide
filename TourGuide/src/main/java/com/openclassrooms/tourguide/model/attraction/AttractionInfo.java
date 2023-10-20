@@ -8,15 +8,15 @@ public class AttractionInfo {
     private double distanceInMilesFromUser;
     private int rewardPoints;
 
-    public AttractionInfo (String attractionName, Location attractionLocation,
-                           double distanceInMilesFromUser, int rewardPoints) {
+    public AttractionInfo(String attractionName, Location attractionLocation,
+                          double distanceInMilesFromUser, int rewardPoints) {
         this.attractionName = attractionName;
         this.attractionLocation = attractionLocation;
         this.distanceInMilesFromUser = distanceInMilesFromUser;
-        this.rewardPoints =rewardPoints;
+        this.rewardPoints = rewardPoints;
     }
 
-    public String getAttractionName(){
+    public String getAttractionName() {
         return attractionName;
     }
 
@@ -28,11 +28,11 @@ public class AttractionInfo {
         this.distanceInMilesFromUser = distanceInMilesFromUser;
     }
 
-    public int getRewardPoints () {
+    public int getRewardPoints() {
         return rewardPoints;
     }
 
-    public void setRewardPoints (int rewardPoints){
+    public void setRewardPoints(int rewardPoints) {
         this.rewardPoints = rewardPoints;
     }
 

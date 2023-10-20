@@ -1,9 +1,7 @@
 package com.openclassrooms.tourguide.service;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -34,7 +32,7 @@ public class RewardsService {
     public RewardsService(GpsUtil gpsUtil, RewardCentral rewardCentral) {
         this.gpsUtil = gpsUtil;
         this.rewardsCentral = rewardCentral;
-        this.attractions = gpsUtil.getAttractions();
+        this.attractions = gpsUtil.getAttractions(); // ajouté au constructeur afin de charger la liste une seule fois
     }
 
     public void setProximityBuffer(int proximityBuffer) {
@@ -46,63 +44,35 @@ public class RewardsService {
     }
 
     public CompletableFuture<Void> calculateRewards(User user) {
-        List<VisitedLocation> userLocations = user.getVisitedLocations();/// Ecrit comme ça a la base...
-        //... et remplacé par une CopyOnWriteArrayList pour gérer une ConcurrentModificationException
-     /* CopyOnWriteArrayList<VisitedLocation> userLocations = new CopyOnWriteArrayList<>();
-        user.getVisitedLocations().forEach(visitedLocation -> userLocations.add(visitedLocation));*/
-        //Edit: Plus besoin de ça j'ai modifié directement l'attribut
-        // List<VisitedLacation> de la classe User en CopyOnWriteArrayList
 
-        /* return CompletableFuture.supplyAsync(() -> gpsUtil.getAttractions(), executorService)
-                .thenCompose((attractions -> {*/ // thenCompose permet de chainer des completableFuture entre eux
-        // Edit: methode supprimé, inutile car gpsUtil.getAttraction est maintenant appelé une seule fois dans le constructeur
+        List<VisitedLocation> userLocations = user.getVisitedLocations();
 
         List<CompletableFuture<Void>> futures = new ArrayList<>();
-        for (VisitedLocation visitedLocation : userLocations) {
-            for (Attraction attraction : attractions) {
-                // if valid = quand le nom de l'attraction ne correspond à aucune des attractions visitées par l'utilisateur
+
+        //Pour chaque attraction de l'app, on parcourt toutes les positions de l'utilisateur
+        for (Attraction attraction : attractions) {
+            for (VisitedLocation visitedLocation : userLocations) {
+
+                // if true = user n'a pas encore de Reward pour cette attraction
                 if (user.getUserRewards().stream().filter(reward -> reward.attraction.attractionName.equals(attraction.attractionName)).count() == 0) {
                     if (nearAttraction(visitedLocation, attraction)) {
+
+                        //Un CompletableFuture<Void> ajouté dans la liste "futures" à chaque boucle
                         futures.add(addUserRewardAsync(user, visitedLocation, attraction));
-                        //Un CompletableFuture<Void> ajouté dans la liste "future" à chaque boucle
+                        //Quand une nouvelle récompense est ajoutée, on passe immédiatement à l'attraction suivante
+                        break;
                     }
                 }
             }
         }
+        //On retourne un CompletableFuture composé de tout les CompletableFuture mis dans la liste "futures" (.allOf)
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
-        //On retourne un CompletableFuture composé de tout les CompletableFuture mis dans la liste "futures" (allOf)
     }
 
     public CompletableFuture<Void> addUserRewardAsync(User user, VisitedLocation visitedLocation, Attraction attraction) {
         return CompletableFuture.supplyAsync(() -> getRewardPoints(attraction, user), executorService).thenAccept((integer) -> {
             user.addUserReward(new UserReward(visitedLocation, attraction, integer));
         });
-    }
-
-    //TODO: Methode en double de calculateReward, a supprimer avant la soutenance
-    // cette methode résout le probléme de ConcurrentModificationException dans passer par la CopyOnWriteArrayList
-    public void calculateRewards2(User user) {
-
-        List<VisitedLocation> userLocations = user.getVisitedLocations();
-        List<Attraction> attractions = gpsUtil.getAttractions();
-        List<UserReward> rewards = user.getUserRewards();
-
-        Map<Attraction, VisitedLocation> nearbyAttractions = new HashMap<>();
-        for (VisitedLocation visitedLocation : userLocations) {
-            for (Attraction attraction : attractions) {
-                if (nearAttraction(visitedLocation, attraction)) {
-                    nearbyAttractions.put(attraction, visitedLocation);
-
-                }
-            }
-        }
-
-        for (Map.Entry<Attraction, VisitedLocation> attraction : nearbyAttractions.entrySet()) {
-            if (rewards.stream().filter(reward -> reward.attraction.attractionName.equals(attraction.getKey().attractionName)).count() == 0) {
-                user.addUserReward(new UserReward(attraction.getValue(), attraction.getKey(), getRewardPoints(attraction.getKey(), user)));
-            }
-            // Un utilisateur obtient une réduction quand il est proche d'une attraction pour laquelle il n'a pas déja de réduction
-        }
     }
 
     public boolean isWithinAttractionProximity(Attraction attraction, Location location) {
