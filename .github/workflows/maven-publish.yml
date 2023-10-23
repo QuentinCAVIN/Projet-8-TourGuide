@@ -48,7 +48,7 @@ jobs:
       uses: actions/checkout@v3
       
     - name: Upload JAR
-    - uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v3
       with:
         name: tour-guide
         path: TourGuide/target/tourguide-0.0.1-SNAPSHOT.jar
