@@ -29,3 +29,4 @@ Pour résoudre les problèmes de performance et améliorer l'expérience utilisa
 
 ## Conclusion
 Grâce à ces améliorations, l'application TourGuide est désormais plus rapide et capable de gérer efficacement un nombre croissant d'utilisateurs. Les optimisations apportées garantissent une meilleure expérience utilisateur et une plus grande fiabilité de l'application.
+![Diagramme de classe TourGuide](https://github.com/QuentinCAVIN/Projet-8-TourGuide/assets/117484688/edc3946c-36db-4a47-903b-30e38a1392bc)
